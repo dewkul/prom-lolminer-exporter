@@ -1,5 +1,6 @@
 package schema
 
+// LolMinerDeprecatedResult
 // Deprecated: The rule Title uses for word boundaries does not handle Unicode
 // punctuation properly. Use golang.org/x/text/cases instead.
 type LolMinerDeprecatedResult struct {
@@ -10,12 +11,14 @@ type LolMinerDeprecatedResult struct {
 	GPUs     []LolMinerGPUDeprecateResult   `json:"GPUs"`
 }
 
+// LolMinerDeprecateMiningResult
 // Deprecated: The rule Title uses for word boundaries does not handle Unicode
 // punctuation properly. Use golang.org/x/text/cases instead.
 type LolMinerDeprecateMiningResult struct {
 	Algorithm string `json:"Algorithm"`
 }
 
+// LolMinerDeprecateStratumResult
 // Deprecated: The rule Title uses for word boundaries does not handle Unicode
 // punctuation properly. Use golang.org/x/text/cases instead.
 type LolMinerDeprecateStratumResult struct {
@@ -24,6 +27,7 @@ type LolMinerDeprecateStratumResult struct {
 	AverageLatencyMs float64 `json:"Average_Latency"`
 }
 
+// LolMinerDeprecateSessionResult
 // Deprecated: The rule Title uses for word boundaries does not handle Unicode
 // punctuation properly. Use golang.org/x/text/cases instead.
 type LolMinerDeprecateSessionResult struct {
@@ -39,6 +43,7 @@ type LolMinerDeprecateSessionResult struct {
 	TotalPower       float64 `json:"TotalPower"`
 }
 
+// LolMinerGPUDeprecateResult
 // Deprecated: The rule Title uses for word boundaries does not handle Unicode
 // punctuation properly. Use golang.org/x/text/cases instead.
 type LolMinerGPUDeprecateResult struct {

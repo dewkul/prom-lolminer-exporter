@@ -1,5 +1,6 @@
 package schema
 
+// LolMinerMetric
 type LolMinerMetric struct {
 	Software   string
 	Session    LolMinerSessionMetric
@@ -9,6 +10,7 @@ type LolMinerMetric struct {
 	Algorithms []LolMinerAlgoMetric
 }
 
+// LolMinerSessionMetric
 type LolMinerSessionMetric struct {
 	Startup       uint
 	StartupString string `json:"StartupString"`
@@ -16,6 +18,7 @@ type LolMinerSessionMetric struct {
 	LastUpdate    uint64 `json:"Last_Update"`
 }
 
+// LolMinerWorkerMetric
 type LolMinerWorkerMetric struct {
 	Index       uint8
 	Name        string
@@ -29,6 +32,7 @@ type LolMinerWorkerMetric struct {
 	PcieAddress string `json:"PCIE_Address"`
 }
 
+// LolMinerAlgoMetric
 type LolMinerAlgoMetric struct {
 	Algorithm          string
 	AlgorithmAppendix  string `json:"Algorithm_Appendix"`
