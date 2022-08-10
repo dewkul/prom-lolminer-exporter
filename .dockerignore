@@ -1,0 +1,6 @@
+.gitignore
+mock
+example
+dev
+.github
+*.md

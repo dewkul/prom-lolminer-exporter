@@ -8,13 +8,11 @@ ENV CGO_ENABLED=0
 WORKDIR /app
 
 # Download deps
-COPY go.mod ./
-COPY go.sum ./
+COPY . .
 RUN go mod download
 
 # Build app
 ARG APP_VERSION
-COPY *.go ./
 RUN go build -v -ldflags="-X 'main.appVersion=${APP_VERSION}'" -o prom-lolminer-exporter
 
 # Test
