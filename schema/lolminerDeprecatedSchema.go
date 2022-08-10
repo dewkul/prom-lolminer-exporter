@@ -1,8 +1,5 @@
 package schema
 
-// LolMinerDeprecatedResult
-// Deprecated: The rule Title uses for word boundaries does not handle Unicode
-// punctuation properly. Use golang.org/x/text/cases instead.
 type LolMinerDeprecatedResult struct {
 	Software string                         `json:"Software"`
 	Mining   LolMinerDeprecateMiningResult  `json:"Mining"`
@@ -11,25 +8,16 @@ type LolMinerDeprecatedResult struct {
 	GPUs     []LolMinerGPUDeprecateResult   `json:"GPUs"`
 }
 
-// LolMinerDeprecateMiningResult
-// Deprecated: The rule Title uses for word boundaries does not handle Unicode
-// punctuation properly. Use golang.org/x/text/cases instead.
 type LolMinerDeprecateMiningResult struct {
 	Algorithm string `json:"Algorithm"`
 }
 
-// LolMinerDeprecateStratumResult
-// Deprecated: The rule Title uses for word boundaries does not handle Unicode
-// punctuation properly. Use golang.org/x/text/cases instead.
 type LolMinerDeprecateStratumResult struct {
 	CurrentPool      string  `json:"Current_Pool"`
 	CurrentUser      string  `json:"Current_User"`
 	AverageLatencyMs float64 `json:"Average_Latency"`
 }
 
-// LolMinerDeprecateSessionResult
-// Deprecated: The rule Title uses for word boundaries does not handle Unicode
-// punctuation properly. Use golang.org/x/text/cases instead.
 type LolMinerDeprecateSessionResult struct {
 	Startup          int64   `json:"Startup"`
 	StartupString    string  `json:"Startup_String"`
@@ -43,9 +31,6 @@ type LolMinerDeprecateSessionResult struct {
 	TotalPower       float64 `json:"TotalPower"`
 }
 
-// LolMinerGPUDeprecateResult
-// Deprecated: The rule Title uses for word boundaries does not handle Unicode
-// punctuation properly. Use golang.org/x/text/cases instead.
 type LolMinerGPUDeprecateResult struct {
 	Index                  int64   `json:"Index"`
 	Name                   string  `json:"Name"`
