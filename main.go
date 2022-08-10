@@ -8,9 +8,12 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 
+	"github.com/dewkul/prom-lolminer-exporter/schema"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -19,52 +22,8 @@ const namespace = "lolminer"
 
 var enableDebug = false
 var endpoint = defaultEndpoint
-var metricsEndpoint = ""
 
-type lolMinerResult struct {
-	Software string                `json:"Software"`
-	Mining   lolMinerMiningResult  `json:"Mining"`
-	Stratum  lolMinerStratumResult `json:"Stratum"`
-	Session  lolMinerSessionResult `json:"Session"`
-	GPUs     []lolMinerGPUResult   `json:"GPUs"`
-}
-
-type lolMinerMiningResult struct {
-	Algorithm string `json:"Algorithm"`
-}
-
-type lolMinerStratumResult struct {
-	CurrentPool      string  `json:"Current_Pool"`
-	CurrentUser      string  `json:"Current_User"`
-	AverageLatencyMs float64 `json:"Average_Latency"`
-}
-
-type lolMinerSessionResult struct {
-	Startup          int64   `json:"Startup"`
-	StartupString    string  `json:"Startup_String"`
-	Uptime           int64   `json:"Uptime"`
-	LastUpdate       int64   `json:"Last_Update"`
-	ActiveGPUs       int64   `json:"Active_GPUs"`
-	TotalPerformance float64 `json:"Performance_Summary"`
-	PerformanceUnit  string  `json:"Performance_Unit"`
-	AcceptedShares   int64   `json:"Accepted"`
-	SubmittedShares  int64   `json:"Submitted"`
-	TotalPower       float64 `json:"TotalPower"`
-}
-
-type lolMinerGPUResult struct {
-	Index                  int64   `json:"Index"`
-	Name                   string  `json:"Name"`
-	Performance            float64 `json:"Performance"`
-	Power                  float64 `json:"Consumption (W)"`
-	FanSpeedPercent        float64 `json:"Fan Speed (%)"`
-	Temperature            float64 `json:"Temp (deg C)"`
-	MinTemperature         float64 `json:"Mem Temp (deg C)"`
-	SessionAcceptedShares  int64   `json:"Session_Accepted"`
-	SessionSubmittedShares int64   `json:"Session_Submitted"`
-	SessionHWErrors        int64   `json:"Session_HWErr"`
-	PCIEAddress            string  `json:"PCIE_Address"`
-}
+// var metricsEndpoint = ""
 
 func main() {
 	fmt.Printf("%s version %s by %s.\n", appName, appVersion, appAuthor)
@@ -94,7 +53,7 @@ func runServer() error {
 	mainServeMux.HandleFunc("/", handleOtherRequest)
 	mainServeMux.HandleFunc("/metrics", handleScrapeRequest)
 	if err := http.ListenAndServe(endpoint, &mainServeMux); err != nil {
-		return fmt.Errorf("Error while running main HTTP server: %s", err)
+		return fmt.Errorf("error while running main http server: %s", err)
 	}
 	return nil
 }
@@ -154,13 +113,13 @@ func parseTargetURL(response http.ResponseWriter, request *http.Request) *url.UR
 }
 
 // Scrapes the target and returns the parsed data if successful or nil if not.
-func scrapeTarget(response http.ResponseWriter, targetURL *url.URL) *lolMinerResult {
+func scrapeTarget(response http.ResponseWriter, targetURL *url.URL) *schema.LolMinerMetric {
 	// Scrape
 	scrapeRequest, scrapeRequestErr := http.NewRequest("GET", targetURL.String(), nil)
 	if scrapeRequestErr != nil {
-		if enableDebug {
-			fmt.Printf("[DEBUG] Failed to make request to scrape target:\n%v", scrapeRequestErr)
-		}
+		// if enableDebug {
+		fmt.Printf("[ERROR] Failed to make request to scrape target:\n%v", scrapeRequestErr)
+		// }
 		message := fmt.Sprintf("500 - Failed to scrape target: %s\n", scrapeRequestErr)
 		http.Error(response, message, 500)
 		return nil
@@ -168,9 +127,9 @@ func scrapeTarget(response http.ResponseWriter, targetURL *url.URL) *lolMinerRes
 	scrapeClient := http.Client{}
 	scrapeResponse, scrapeResponseErr := scrapeClient.Do(scrapeRequest)
 	if scrapeResponseErr != nil {
-		if enableDebug {
-			fmt.Printf("[DEBUG] Failed to scrape target:\n%v", scrapeResponseErr)
-		}
+		// if enableDebug {
+		fmt.Printf("[ERROR] Failed to scrape target:\n%v\n", scrapeResponseErr)
+		// }
 		message := fmt.Sprintf("500 - Failed to scrape target: %s\n", scrapeResponseErr)
 		http.Error(response, message, 500)
 		return nil
@@ -187,7 +146,7 @@ func scrapeTarget(response http.ResponseWriter, targetURL *url.URL) *lolMinerRes
 	}
 
 	// Parse
-	var data lolMinerResult
+	data := schema.LolMinerMetric{}
 	if err := json.Unmarshal(rawData, &data); err != nil {
 		if enableDebug {
 			fmt.Printf("[DEBUG] Failed to unmarshal data from target:\n%v", err)
@@ -197,28 +156,32 @@ func scrapeTarget(response http.ResponseWriter, targetURL *url.URL) *lolMinerRes
 		return nil
 	}
 
-	// Validate
-	if data.Session.PerformanceUnit != "mh/s" {
-		message := fmt.Sprintf("500 - Target returned unexpected performance unit (expected \"mh/s\"): %s\n", data.Session.PerformanceUnit)
-		http.Error(response, message, 500)
-		return nil
-	}
+	// // Validate
+	// if data.Session.PerformanceUnit != "mh/s" {
+	// 	message := fmt.Sprintf("500 - Target returned unexpected performance unit (expected \"mh/s\"): %s\n", data.Session.PerformanceUnit)
+	// 	fmt.Printf("[ERROR] Failed to validate data from target: %s", message)
+
+	// 	http.Error(response, message, 500)
+	// 	return nil
+	// }
 
 	return &data
 }
 
 // Builds a new registry, adds scraped data to it and returns it if successful or nil if not.
-func buildRegistry(response http.ResponseWriter, data *lolMinerResult) *prometheus.Registry {
+func buildRegistry(response http.ResponseWriter, data *schema.LolMinerMetric) *prometheus.Registry {
 	registry := prometheus.NewRegistry()
-	registry.MustRegister(prometheus.NewGoCollector())
+	registry.MustRegister(collectors.NewGoCollector())
 
 	addExporterMetrics(registry)
 	addSoftwareMetrics(registry, data)
-	addMiningMetrics(registry, &data.Mining)
-	addStratumMetrics(registry, &data.Stratum)
+	for i, algo := range data.Algorithms {
+		addAlgoMetrics(int64(i), registry, &algo)
+	}
+	// // addStratumMetrics(registry, &data.Stratum)
 	addSessionMetrics(registry, &data.Session)
-	for _, gpuData := range data.GPUs {
-		addGPUMetrics(registry, &gpuData)
+	for i, gpuData := range data.Workers {
+		addGPUMetrics(int64(i), registry, &gpuData) //&data.Workers[0]
 	}
 
 	return registry
@@ -237,7 +200,7 @@ func addExporterMetrics(registry *prometheus.Registry) {
 	registry.MustRegister(infoMetric)
 }
 
-func addSoftwareMetrics(registry *prometheus.Registry, data *lolMinerResult) {
+func addSoftwareMetrics(registry *prometheus.Registry, data *schema.LolMinerMetric) {
 	// Info
 	infoLabels := make(prometheus.Labels)
 	infoLabels["software"] = data.Software
@@ -248,51 +211,70 @@ func addSoftwareMetrics(registry *prometheus.Registry, data *lolMinerResult) {
 	}, labelsKeys(infoLabels))
 	infoMetric.With(infoLabels).Set(1)
 	registry.MustRegister(infoMetric)
+
+	// // Active GPUs - Num_Workers
+	var activeGPUsMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: namespace,
+		Name:      "session_active_gpus",
+		Help:      "Number of active GPUs.",
+	}, labelsKeys(infoLabels))
+	activeGPUsMetric.With(infoLabels).Set(float64(data.NumWorkers))
+	registry.MustRegister(activeGPUsMetric)
 }
 
-func addMiningMetrics(registry *prometheus.Registry, data *lolMinerMiningResult) {
+func addAlgoMetrics(i int64, registry *prometheus.Registry, data *schema.LolMinerAlgoMetric) {
 	// Info
 	infoLabels := make(prometheus.Labels)
 	infoLabels["algorithm"] = data.Algorithm
 	var infoMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: namespace,
-		Name:      "mining_info",
+		Name:      "mining_info_" + strconv.FormatInt(i, 10),
 		Help:      "Metadata about mining.",
 	}, labelsKeys(infoLabels))
 	infoMetric.With(infoLabels).Set(1)
 	registry.MustRegister(infoMetric)
-}
 
-func addStratumMetrics(registry *prometheus.Registry, data *lolMinerStratumResult) {
-	// Common labels for subsystem
-	commonLabels := make(prometheus.Labels)
-	commonLabels["stratum_pool"] = data.CurrentPool
-	commonLabels["stratum_user"] = data.CurrentUser
-
-	// Info
-	infoLabels := make(prometheus.Labels, len(commonLabels))
-	for k, v := range commonLabels {
-		infoLabels[k] = v
-	}
-	var infoMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	// Accepted shares
+	var acceptedSharesMetric = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: namespace,
-		Name:      "stratum_info",
-		Help:      "Metadata about the stratum.",
+		Name:      "session_accepted_shares_total",
+		Help:      "Number of accepted shares for this session.",
 	}, labelsKeys(infoLabels))
-	infoMetric.With(infoLabels).Set(1)
-	registry.MustRegister(infoMetric)
+	acceptedSharesMetric.With(infoLabels).Add(float64(data.TotalAccepted))
+	registry.MustRegister(acceptedSharesMetric)
 
-	// Avg. latency
-	var avgLatencyMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Namespace: namespace,
-		Name:      "stratum_average_latency_seconds",
-		Help:      "Average latency for the stratum (s).",
-	}, labelsKeys(commonLabels))
-	avgLatencyMetric.With(commonLabels).Set(data.AverageLatencyMs / 1000)
-	registry.MustRegister(avgLatencyMetric)
 }
 
-func addSessionMetrics(registry *prometheus.Registry, data *lolMinerSessionResult) {
+// func addStratumMetrics(registry *prometheus.Registry, data *schema.Lol) {
+// 	// Common labels for subsystem
+// 	commonLabels := make(prometheus.Labels)
+// 	commonLabels["stratum_pool"] = data.CurrentPool
+// 	commonLabels["stratum_user"] = data.CurrentUser
+
+// 	// Info
+// 	infoLabels := make(prometheus.Labels, len(commonLabels))
+// 	for k, v := range commonLabels {
+// 		infoLabels[k] = v
+// 	}
+// 	var infoMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+// 		Namespace: namespace,
+// 		Name:      "stratum_info",
+// 		Help:      "Metadata about the stratum.",
+// 	}, labelsKeys(infoLabels))
+// 	infoMetric.With(infoLabels).Set(1)
+// 	registry.MustRegister(infoMetric)
+
+// 	// Avg. latency
+// 	var avgLatencyMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+// 		Namespace: namespace,
+// 		Name:      "stratum_average_latency_seconds",
+// 		Help:      "Average latency for the stratum (s).",
+// 	}, labelsKeys(commonLabels))
+// 	avgLatencyMetric.With(commonLabels).Set(data.AverageLatencyMs / 1000)
+// 	registry.MustRegister(avgLatencyMetric)
+// }
+
+func addSessionMetrics(registry *prometheus.Registry, data *schema.LolMinerSessionMetric) {
 	// Common labels for subsystem
 	commonLabels := make(prometheus.Labels)
 	commonLabels["session_startup_time"] = data.StartupString
@@ -337,53 +319,35 @@ func addSessionMetrics(registry *prometheus.Registry, data *lolMinerSessionResul
 	lastUpdateMetric.With(commonLabels).Set(float64(data.LastUpdate))
 	registry.MustRegister(lastUpdateMetric)
 
-	// Active GPUs
-	var activeGPUsMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Namespace: namespace,
-		Name:      "session_active_gpus",
-		Help:      "Number of active GPUs.",
-	}, labelsKeys(commonLabels))
-	activeGPUsMetric.With(commonLabels).Set(float64(data.ActiveGPUs))
-	registry.MustRegister(activeGPUsMetric)
+	// // Performance
+	// var totalPerformanceMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	// 	Namespace: namespace,
+	// 	Name:      "session_performance_total_mhps",
+	// 	Help:      "Total current performance for the session (Mh/s).",
+	// }, labelsKeys(commonLabels))
+	// totalPerformanceMetric.With(commonLabels).Set(float64(data.))
+	// registry.MustRegister(totalPerformanceMetric)
 
-	// Performance
-	var totalPerformanceMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Namespace: namespace,
-		Name:      "session_performance_total_mhps",
-		Help:      "Total current performance for the session (Mh/s).",
-	}, labelsKeys(commonLabels))
-	totalPerformanceMetric.With(commonLabels).Set(float64(data.TotalPerformance))
-	registry.MustRegister(totalPerformanceMetric)
+	// // Submitted shares - Replaced with Algorithms.TotalRejected
+	// var submittedSharesMetric = prometheus.NewCounterVec(prometheus.CounterOpts{
+	// 	Namespace: namespace,
+	// 	Name:      "session_submitted_shares_total",
+	// 	Help:      "Number of submitted shares for this session.",
+	// }, labelsKeys(commonLabels))
+	// submittedSharesMetric.With(commonLabels).Add(float64(data.SubmittedShares))
+	// registry.MustRegister(submittedSharesMetric)
 
-	// Accepted shares
-	var acceptedSharesMetric = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Namespace: namespace,
-		Name:      "session_accepted_shares_total",
-		Help:      "Number of accepted shares for this session.",
-	}, labelsKeys(commonLabels))
-	acceptedSharesMetric.With(commonLabels).Add(float64(data.AcceptedShares))
-	registry.MustRegister(acceptedSharesMetric)
-
-	// Submitted shares
-	var submittedSharesMetric = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Namespace: namespace,
-		Name:      "session_submitted_shares_total",
-		Help:      "Number of submitted shares for this session.",
-	}, labelsKeys(commonLabels))
-	submittedSharesMetric.With(commonLabels).Add(float64(data.SubmittedShares))
-	registry.MustRegister(submittedSharesMetric)
-
-	// Total power
-	var totalPowerMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Namespace: namespace,
-		Name:      "session_power_total_watts",
-		Help:      "Total current power usage for the session (Watt).",
-	}, labelsKeys(commonLabels))
-	totalPowerMetric.With(commonLabels).Set(float64(data.TotalPower))
-	registry.MustRegister(totalPowerMetric)
+	// // Total power
+	// var totalPowerMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	// 	Namespace: namespace,
+	// 	Name:      "session_power_total_watts",
+	// 	Help:      "Total current power usage for the session (Watt).",
+	// }, labelsKeys(commonLabels))
+	// totalPowerMetric.With(commonLabels).Set(float64(data.TotalPower))
+	// registry.MustRegister(totalPowerMetric)
 }
 
-func addGPUMetrics(registry *prometheus.Registry, data *lolMinerGPUResult) {
+func addGPUMetrics(i int64, registry *prometheus.Registry, data *schema.LolMinerWorkerMetric) {
 	// Common labels for subsystem
 	commonLabels := make(prometheus.Labels)
 	commonLabels["gpu_index"] = fmt.Sprintf("%d", data.Index)
@@ -394,28 +358,28 @@ func addGPUMetrics(registry *prometheus.Registry, data *lolMinerGPUResult) {
 		infoLabels[k] = v
 	}
 	infoLabels["name"] = data.Name
-	infoLabels["pcie_address"] = data.PCIEAddress
+	infoLabels["pcie_address"] = data.PcieAddress
 	var infoMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: namespace,
-		Name:      "gpu_info",
+		Name:      "gpu_info_" + strconv.FormatInt(i, 10),
 		Help:      "Metadata about a GPU.",
 	}, labelsKeys(infoLabels))
 	infoMetric.With(infoLabels).Set(1)
 	registry.MustRegister(infoMetric)
 
-	// Performance
-	var performanceMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Namespace: namespace,
-		Name:      "gpu_performance_mhps",
-		Help:      "GPU performance (Mh/s).",
-	}, labelsKeys(commonLabels))
-	performanceMetric.With(commonLabels).Set(float64(data.Performance))
-	registry.MustRegister(performanceMetric)
+	// // Performance
+	// var performanceMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	// 	Namespace: namespace,
+	// 	Name:      "gpu_performance_mhps",
+	// 	Help:      "GPU performance (Mh/s).",
+	// }, labelsKeys(commonLabels))
+	// performanceMetric.With(commonLabels).Set(float64(data.Performance))
+	// registry.MustRegister(performanceMetric)
 
 	// Power
 	var powerMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: namespace,
-		Name:      "gpu_power_watts",
+		Name:      "gpu_power_watts_" + strconv.FormatInt(i, 10),
 		Help:      "GPU power usage (Watt).",
 	}, labelsKeys(commonLabels))
 	powerMetric.With(commonLabels).Set(float64(data.Power))
@@ -424,47 +388,48 @@ func addGPUMetrics(registry *prometheus.Registry, data *lolMinerGPUResult) {
 	// Fan speed
 	var fanSpeedMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: namespace,
-		Name:      "gpu_fan_speed",
-		Help:      "GPU fan speed (0-1).",
+		Name:      "gpu_fan_speed_" + strconv.FormatInt(i, 10),
+		Help:      "GPU fan speed (%).",
 	}, labelsKeys(commonLabels))
-	fanSpeedMetric.With(commonLabels).Set(float64(data.FanSpeedPercent / 100))
+	fanSpeedMetric.With(commonLabels).Set(float64(data.FanSpeed))
 	registry.MustRegister(fanSpeedMetric)
 
 	// Temperature
 	var temperatureMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: namespace,
-		Name:      "gpu_temperature_celsius",
+		Name:      "gpu_temperature_celsius_" + strconv.FormatInt(i, 10),
 		Help:      "GPU temperature (deg. C).",
 	}, labelsKeys(commonLabels))
-	temperatureMetric.With(commonLabels).Set(float64(data.Temperature))
+	temperatureMetric.With(commonLabels).Set(float64(data.CoreTemp))
 	registry.MustRegister(temperatureMetric)
 
-	// Session accepted shares
-	var sessionAcceptedSharesMetric = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Namespace: namespace,
-		Name:      "gpu_session_accepted_shares_total",
-		Help:      "Number of accepted shared for the GPU during the current session.",
-	}, labelsKeys(commonLabels))
-	sessionAcceptedSharesMetric.With(commonLabels).Add(float64(data.SessionAcceptedShares))
-	registry.MustRegister(sessionAcceptedSharesMetric)
+	// Locate in algorithm
+	// // Session accepted shares
+	// var sessionAcceptedSharesMetric = prometheus.NewCounterVec(prometheus.CounterOpts{
+	// 	Namespace: namespace,
+	// 	Name:      "gpu_session_accepted_shares_total",
+	// 	Help:      "Number of accepted shared for the GPU during the current session.",
+	// }, labelsKeys(commonLabels))
+	// sessionAcceptedSharesMetric.With(commonLabels).Add(float64(data.SessionAcceptedShares))
+	// registry.MustRegister(sessionAcceptedSharesMetric)
 
-	// Session submitted shares
-	var sessionSubmittedSharesMetric = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Namespace: namespace,
-		Name:      "gpu_session_submitted_shares_total",
-		Help:      "Number of submitted shared for the GPU during the current session.",
-	}, labelsKeys(commonLabels))
-	sessionSubmittedSharesMetric.With(commonLabels).Add(float64(data.SessionSubmittedShares))
-	registry.MustRegister(sessionSubmittedSharesMetric)
+	// // Session submitted shares
+	// var sessionSubmittedSharesMetric = prometheus.NewCounterVec(prometheus.CounterOpts{
+	// 	Namespace: namespace,
+	// 	Name:      "gpu_session_submitted_shares_total",
+	// 	Help:      "Number of submitted shared for the GPU during the current session.",
+	// }, labelsKeys(commonLabels))
+	// sessionSubmittedSharesMetric.With(commonLabels).Add(float64(data.SessionSubmittedShares))
+	// registry.MustRegister(sessionSubmittedSharesMetric)
 
-	// Session HW errors
-	var sessionHwErrorsMetric = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Namespace: namespace,
-		Name:      "gpu_session_hardware_errors_total",
-		Help:      "Number of hardware errors for the GPU during the current session.",
-	}, labelsKeys(commonLabels))
-	sessionHwErrorsMetric.With(commonLabels).Add(float64(data.SessionHWErrors))
-	registry.MustRegister(sessionHwErrorsMetric)
+	// // Session HW errors
+	// var sessionHwErrorsMetric = prometheus.NewCounterVec(prometheus.CounterOpts{
+	// 	Namespace: namespace,
+	// 	Name:      "gpu_session_hardware_errors_total",
+	// 	Help:      "Number of hardware errors for the GPU during the current session.",
+	// }, labelsKeys(commonLabels))
+	// sessionHwErrorsMetric.With(commonLabels).Add(float64(data.SessionHWErrors))
+	// registry.MustRegister(sessionHwErrorsMetric)
 }
 
 func labelsKeys(fullMap prometheus.Labels) []string {

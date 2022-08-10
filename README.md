@@ -1,11 +1,13 @@
 # Prometheus lolMiner Exporter
 
-[![GitHub release](https://img.shields.io/github/v/release/HON95/prometheus-lolminer-exporter?label=Version)](https://github.com/HON95/prometheus-lolminer-exporter/releases)
-[![CI](https://github.com/HON95/prometheus-lolminer-exporter/workflows/CI/badge.svg?branch=master)](https://github.com/HON95/prometheus-lolminer-exporter/actions?query=workflow%3ACI)
-[![FOSSA status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FHON95%2Fprometheus-lolminer-exporter.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FHON95%2Fprometheus-lolminer-exporter?ref=badge_shield)
-[![Docker pulls](https://img.shields.io/docker/pulls/hon95/prometheus-lolminer-exporter?label=Docker%20Hub)](https://hub.docker.com/r/hon95/prometheus-lolminer-exporter)
+[![GitHub release](https://img.shields.io/github/v/release/dewkul/prom-lolminer-exporter?label=Version)](https://github.com/dewkul/prom-lolminer-exporter/releases)
+[![CI](https://github.com/dewkul/prom-lolminer-exporter/workflows/CI/badge.svg?branch=main)](https://github.com/dewkul/prom-lolminer-exporter/actions?query=workflow%3ACI)
+[![Docker pulls](https://img.shields.io/docker/pulls/dewkul/prom-lolminer-exporter?label=Docker%20Hub)](https://hub.docker.com/r/dewkul/prom-lolminer-exporter)
 
 ![Dashboard](https://grafana.com/api/dashboards/14296/images/10340/image)
+
+## What's new
+- Support new lolminer API format
 
 ## Usage
 
@@ -22,7 +24,7 @@ version: "3.7"
 
 services:
   lolminer-exporter:
-    image: hon95/prometheus-lolminer-exporter:1
+    image: dewkul/prom-lolminer-exporter:1
     #command:
     #  - '--endpoint=:8080'
     #  - '--debug'
@@ -77,7 +79,7 @@ See the dev/example Docker Compose file: [docker-compose.yml](dev/docker-compose
 
 ## Development
 
-- Build (Go): `go build -o prometheus-lolminer-exporter`
+- Build (Go): `go build -o prom-lolminer-exporter`
 - Lint: `golint ./..`
 - Build and run along Traefik (Docker Compose): `docker-compose -f dev/docker-compose.yml up --force-recreate --build`
 
