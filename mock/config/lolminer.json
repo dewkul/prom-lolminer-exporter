@@ -1,0 +1,91 @@
+[
+  {
+    "httpRequest": {
+      "path": "/"
+    },
+    "httpResponse": {
+      "body": {
+        "Software": "lolMiner 1.48",
+        "Session": {
+          "Startup": 1659744528,
+          "Startup_String": "2022-08-06_00-08-48",
+          "Uptime": 43001,
+          "Last_Update": 1659787529
+        },
+        "Num_Workers": 2,
+        "Workers": [
+          {
+            "Index": 0,
+            "Name": "Radeon RX 580 Series",
+            "Power": 140.14599999999999,
+            "CCLK": 1365,
+            "MCLK": 2000,
+            "Core_Temp": 72,
+            "Juc_Temp": 0,
+            "Mem_Temp": 0,
+            "Fan_Speed": 68,
+            "PCIE_Address": "2:0"
+          },
+          {
+            "Index": 1,
+            "Name": "Radeon RX 580 Series",
+            "Power": 110.072,
+            "CCLK": 1150,
+            "MCLK": 2020,
+            "Core_Temp": 68,
+            "Juc_Temp": 0,
+            "Mem_Temp": 0,
+            "Fan_Speed": 42,
+            "PCIE_Address": "3:0"
+          },
+          {
+            "Index": 2,
+            "Name": "Radeon RX 580 Series",
+            "Power": 112.072,
+            "CCLK": 1150,
+            "MCLK": 2020,
+            "Core_Temp": 68,
+            "Juc_Temp": 0,
+            "Mem_Temp": 0,
+            "Fan_Speed": 42,
+            "PCIE_Address": "4:0"
+          },
+          {
+            "Index": 3,
+            "Name": "Radeon RX 580 Series",
+            "Power": 124.074,
+            "CCLK": 1340,
+            "MCLK": 2000,
+            "Core_Temp": 74,
+            "Juc_Temp": 0,
+            "Mem_Temp": 0,
+            "Fan_Speed": 75,
+            "PCIE_Address": "8:0"
+          }
+        ],
+        "Num_Algorithms": 1,
+        "Algorithms": [
+          {
+            "Algorithm": "Ethash",
+            "Algorithm_Appendix": "",
+            "Pool": "eth-sg.flexpool.io:5555",
+            "User": "0x0A648730D8E975987D962DBe600C204B228D1026.RIG-A-AMD",
+            "Worker": "RIG-A-AMD",
+            "Performance_Unit": "mh/s",
+            "Performance_Factor": 1000000,
+            "Total_Performance": 113.0692608,
+            "Total_Accepted": 1234,
+            "Total_Rejected": 0,
+            "Total_Stales": 0,
+            "Total_Errors": 0,
+            "Worker_Performance": [27.43, 29.37, 29.37, 26.9],
+            "Worker_Accepted": [286, 322, 322, 304],
+            "Worker_Rejected": [0, 0, 0, 0],
+            "Worker_Stales": [0, 0, 0, 0],
+            "Worker_Errors": [0, 0, 0, 0]
+          }
+        ]
+      }
+    }
+  }
+]
